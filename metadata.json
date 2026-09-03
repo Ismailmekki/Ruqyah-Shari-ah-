@@ -1,0 +1,8 @@
+{
+  "name": "Remix الرقية الشرعية من القرآن الكريم",
+  "description": "المصحف الشريف كاملاً (114 سورة) مع 32 قارئاً وتفاسير وترجمات بكل اللغات، مع الرقية الشرعية الشاملة، استماع وقراءة وتكرار.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
