@@ -16,8 +16,10 @@ import {
   User,
   Sparkles,
   Layers,
+  LogOut,
 } from 'lucide-react';
 import { ActiveTab, ThemeMode } from '../types';
+import { useAuth } from '../context/AuthContext.tsx';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -67,6 +69,8 @@ export function Header({
   const [showSearch, setShowSearch] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, signInWithGoogle, logOut } = useAuth();
 
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
@@ -262,6 +266,67 @@ export function Header({
                     <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* User Account / Cloud Sync Button */}
+          <div className="relative">
+            {user ? (
+              <button
+                id="header-user-profile-btn"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                title="الملف الشخصي والمزامنة السحابية"
+              >
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-5 h-5 rounded-full" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+                    {user.displayName ? user.displayName.charAt(0) : 'م'}
+                  </div>
+                )}
+                <span className="hidden sm:inline max-w-[80px] truncate">{user.displayName || 'حسابي'}</span>
+              </button>
+            ) : (
+              <button
+                id="header-signin-btn"
+                onClick={() => signInWithGoogle()}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-stone-800 text-xs font-medium text-stone-700 dark:text-stone-300 transition-colors"
+                title="تسجيل الدخول لمزامنة تقدم القراءة والأوراد"
+              >
+                <User className="w-3.5 h-3.5 text-stone-500" />
+                <span className="hidden sm:inline">مزامنة الحساب</span>
+              </button>
+            )}
+
+            {/* User Menu Dropdown */}
+            {showUserMenu && user && (
+              <div
+                className={`absolute left-0 mt-2 w-56 p-3 rounded-2xl shadow-xl border z-50 transition-all ${
+                  theme === 'dark'
+                    ? 'bg-stone-800 border-stone-700 text-stone-100'
+                    : 'bg-white border-stone-200 text-stone-800'
+                }`}
+              >
+                <div className="pb-2 mb-2 border-b border-stone-100 dark:border-stone-700">
+                  <div className="text-xs font-bold truncate">{user.displayName || 'المستخدم'}</div>
+                  <div className="text-[11px] text-stone-400 truncate">{user.email}</div>
+                  <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+                    <Sparkles className="w-3 h-3" />
+                    <span>المزامنة السحابية مفعلة</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    logOut();
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full text-right py-1.5 px-2 rounded-lg text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span>تسجيل الخروج</span>
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
           </div>

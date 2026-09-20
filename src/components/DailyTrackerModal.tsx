@@ -10,6 +10,7 @@ import {
   Award,
 } from 'lucide-react';
 import { ThemeMode } from '../types';
+import { useAuth } from '../context/AuthContext.tsx';
 
 interface DailyTrackerModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ interface RoutineItem {
 }
 
 export function DailyTrackerModal({ isOpen, onClose, theme }: DailyTrackerModalProps) {
+  const { user, token, preferences, updatePreferences } = useAuth();
   const [routines, setRoutines] = useState<RoutineItem[]>(() => {
     const today = new Date().toISOString().split('T')[0];
     const saved = localStorage.getItem(`ruqyah_routine_${today}`);
@@ -44,9 +46,36 @@ export function DailyTrackerModal({ isOpen, onClose, theme }: DailyTrackerModalP
   });
 
   const [streak, setStreak] = useState<number>(() => {
+    if (preferences?.streakCount) return preferences.streakCount;
     const saved = localStorage.getItem('ruqyah_streak_count');
     return saved ? parseInt(saved, 10) : 3;
   });
+
+  // Fetch Cloud SQL routines when opened and user is logged in
+  useEffect(() => {
+    if (!isOpen || !token) return;
+    const today = new Date().toISOString().split('T')[0];
+
+    fetch(`/api/routines?date=${today}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRoutines((prev) =>
+            prev.map((item) => {
+              const matched = data.find((d: any) => d.routineId === item.id);
+              return matched ? { ...item, completed: Boolean(matched.completed) } : item;
+            })
+          );
+        }
+      })
+      .catch((err) => console.error('Error fetching routines:', err));
+
+    if (preferences?.streakCount) {
+      setStreak(preferences.streakCount);
+    }
+  }, [isOpen, token, preferences]);
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -56,13 +85,42 @@ export function DailyTrackerModal({ isOpen, onClose, theme }: DailyTrackerModalP
     const allDone = routines.every((r) => r.completed);
     if (allDone) {
       localStorage.setItem('ruqyah_streak_count', String(streak));
+      if (token) {
+        updatePreferences({ streakCount: streak });
+      }
     }
-  }, [routines, streak]);
+  }, [routines, streak, token]);
 
-  const toggleRoutine = (id: string) => {
+  const toggleRoutine = async (id: string) => {
+    const target = routines.find((r) => r.id === id);
+    if (!target) return;
+    const newCompleted = !target.completed;
+
     setRoutines((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, completed: !r.completed } : r))
+      prev.map((r) => (r.id === id ? { ...r, completed: newCompleted } : r))
     );
+
+    // Save to Cloud SQL if user is authenticated
+    if (token) {
+      const today = new Date().toISOString().split('T')[0];
+      try {
+        await fetch('/api/routines', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            date: today,
+            routineId: id,
+            title: target.title,
+            completed: newCompleted,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to sync routine to Cloud SQL:', err);
+      }
+    }
   };
 
   if (!isOpen) return null;
